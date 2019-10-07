@@ -1,0 +1,113 @@
+---
+- name: Install JDK (Java Development Kit).
+  yum: 
+    name: java-1.8.0-openjdk-devel 
+    state: latest
+
+- name: Create Tomcat system user.
+  user:
+    name: tomcat
+    home: /opt/tomcat
+    shell: /bin/false
+    group: tomcat
+
+- name: Download Tomcat
+  get_url: 
+    url: "{{ tomcat_download_url }}"
+    dest: /tmp/apache-tomcat-9.x.tar.gz
+
+- name: Extract the tar file.
+  unarchive:
+    remote_src: yes
+    src: /tmp/apache-tomcat-9.x.tar.gz
+    dest: /opt/tomcat/
+
+- name: Find the tomcat installation directory name.
+  find:
+    file_type: directory
+    paths: /opt/tomcat
+    recurse: no
+  register: tomcat_directory
+
+- name: Create a symbolic link in case of new versions / updates.
+  file:
+    src: "{{ tomcat_directory['files'][0]['path'] }}"
+    dest: /opt/tomcat/latest
+    state: link
+
+- name: Change directory ownership.
+  file:
+    path: /opt/tomcat
+    owner: tomcat
+    group: tomcat
+    recurse: yes
+
+- name: Find the tomcat shell scripts.
+  find:
+    file_type: file
+    paths: /opt/tomcat/latest/bin/
+    recurse: no
+    patterns: "*.sh"
+  register: shell_scripts
+
+- name: Make the scripts inside the Tomcat bin directory executable.
+  file:
+    path: "{{ item['path'] }}"
+    mode: '755'
+  with_items: 
+    - "{{ shell_scripts['files'] }}"
+
+- name: Create a systemd unit file to make Tomcat run as a service.
+  blockinfile:
+    path: /etc/systemd/system/tomcat.service
+    create: yes
+    block: |
+      [Unit]
+      Description=Tomcat 9 servlet container
+      After=network.target
+
+      [Service]
+      Type=forking
+
+      User=tomcat
+      Group=tomcat
+
+      Environment="JAVA_HOME=/usr/lib/jvm/jre"
+      Environment="JAVA_OPTS=-Djava.security.egd=file:///dev/urandom"
+
+      Environment="CATALINA_BASE=/opt/tomcat/latest"
+      Environment="CATALINA_HOME=/opt/tomcat/latest"
+      Environment="CATALINA_PID=/opt/tomcat/latest/temp/tomcat.pid"
+      Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+
+      ExecStart=/opt/tomcat/latest/bin/startup.sh
+      ExecStop=/opt/tomcat/latest/bin/shutdown.sh
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Daemon reload after adding a new unit.
+  systemd:
+    daemon_reload: yes
+
+- name: Change tomcat server listening port from 8080 to 8090
+  replace:
+    path: /opt/tomcat/latest/conf/server.xml
+    regexp: "8080"
+    replace: "8090"
+
+- name: Adjust the Firewall to allow traffic for port 8090.
+  firewalld:
+    zone: public
+    port: 8090/tcp
+    permanent: yes
+    state: enabled
+
+- name: Reload the firewall.
+  command: systemctl restart firewalld
+
+- name: Enable & Run the Tomcat service.
+  systemd:
+    name: tomcat.service
+    enabled: yes
+    state: started

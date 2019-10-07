@@ -1,0 +1,11 @@
+---
+- name: Install, run & enable Tomcat on the local machine on port 8090.
+  hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Getting the role.
+      include_role:
+        name: install_tomcat
+      vars:
+        tomcat_download_url: "{{ tomcat_download_url }}"
