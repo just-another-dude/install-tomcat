@@ -15,7 +15,7 @@ As of 7.10.19, the current URL for me is: https://www-us.apache.org/dist/tomcat/
 
 
 # Variables
-| ----- | ------ | ------ | ------ |
+| ---- | -------- | ---- | ------- |
 | Name | Required | Type | Example |
 | tomcat_download_url | Yes | String | https://www-us.apache.org/dist/tomcat/tomcat-9/v9.0.26/bin/apache-tomcat-9.0.26.tar.gz |
 
