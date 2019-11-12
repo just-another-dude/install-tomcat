@@ -7,5 +7,5 @@
     - name: Getting the role.
       include_role:
         name: install_tomcat
-      vars:
-        tomcat_download_url: "{{ tomcat_download_url }}"
+      # vars:
+        # tomcat_download_url: "{{ tomcat_download_url }}"
